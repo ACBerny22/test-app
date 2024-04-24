@@ -7,41 +7,56 @@ import {
     Image,
 } from "react-native";
 import Card from "../../components/Card";
-import { useState, useEffect } from "react";
 import ArivalCard from "../../components/ArivalCard";
 import { AntDesign } from "@expo/vector-icons";
+import { useQuery, useFocusEffect } from "@tanstack/react-query";
+import { useNavigation } from "@react-navigation/native";
+
+async function fetchProducts() {
+    const response = await fetch(
+        "https://api.escuelajs.co/api/v1/products?offset=3&limit=3"
+    );
+    const data = await response.json();
+    return data;
+}
+
+async function fetchUser() {
+    const response = await fetch(
+        "https://jsonplaceholder.typicode.com/users/2"
+    );
+    const data = await response.json();
+    return data;
+}
 
 export default function IndexPage() {
-    const options = [
-        {
-            id: 1,
-            title: "Logitech MX-Pro",
-            price: 199.99,
-        },
-        {
-            id: 2,
-            title: "Razer Mamba",
-            price: 102.65,
-        },
-        {
-            id: 3,
-            title: "HyperX PusleFire",
-            price: 155.9,
-        },
-    ];
-    const [user, setUser] = useState();
+    const navigation = useNavigation();
 
-    useEffect(() => {
-        async function getUser() {
-            const response = await fetch(
-                "https://jsonplaceholder.typicode.com/users/2"
-            );
-            const data = await response.json();
-            console.log(data);
-            setUser(data);
-        }
-        getUser();
-    }, []);
+    const {
+        isLoading: productIsLoading,
+        error: productError,
+        data: productData,
+        refetch,
+    } = useQuery({
+        queryKey: ["products"],
+        queryFn: fetchProducts,
+    });
+
+    const { data: user } = useQuery({
+        queryKey: ["user"],
+        queryFn: fetchUser,
+    });
+
+    if (productIsLoading) {
+        return (
+            <View className="px-8 py-20">
+                <Text>Loading...</Text>
+            </View>
+        );
+    }
+    useFocusEffect(() => {
+        // Refetch data when the component is focused (i.e., navigated back to)
+        refetch({ notifyOnChangeProps: ["focused"] });
+    }, [navigation.getState().routes[navigation.getState().index].name]); // Track navigation state changes
 
     return (
         <ScrollView className="flex-1 bg-zinc-100">
@@ -88,17 +103,18 @@ export default function IndexPage() {
                     <Text className="font-semibold text-xl mb-5">
                         Featured Items:
                     </Text>
-                    <ScrollView horizontal className="flex-wrap">
-                        {options.map((option) => {
+                    <ScrollView className="">
+                        {productData?.map((option) => {
                             return (
                                 <Card
                                     key={option.id}
                                     id={option.id}
                                     title={option.title}
+                                    description={option.description}
                                     price={option.price}
-                                >
-                                    {option.title}
-                                </Card>
+                                    category={option.category.name}
+                                    image={option.images[0]}
+                                />
                             );
                         })}
                     </ScrollView>
